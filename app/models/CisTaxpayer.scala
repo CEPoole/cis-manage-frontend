@@ -53,3 +53,20 @@ case class CisTaxpayerSearchResult(
 object CisTaxpayerSearchResult {
   implicit val format: OFormat[CisTaxpayerSearchResult] = Json.format[CisTaxpayerSearchResult]
 }
+
+case class CisTaxpayerCache(
+  contractorName: String,
+  employerRef: String,
+  utr: String
+)
+
+object CisTaxpayerCache {
+  implicit val format: OFormat[CisTaxpayerCache] = Json.format[CisTaxpayerCache]
+}
+
+extension (ctp: CisTaxpayer)
+  def toCache: CisTaxpayerCache =
+    val contractorName = ctp.schemeName.getOrElse("")
+    val employerRef    = s"${ctp.taxOfficeNumber}/${ctp.taxOfficeRef}"
+    val utr            = ctp.utr.getOrElse("")
+    CisTaxpayerCache(contractorName, employerRef, utr)

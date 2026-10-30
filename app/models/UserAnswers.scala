@@ -16,7 +16,7 @@
 
 package models
 
-import pages.QuestionPage
+import pages.{Journey, QuestionPage}
 import play.api.libs.json.*
 import queries.{Gettable, Settable}
 import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
@@ -32,6 +32,9 @@ final case class UserAnswers(
 
   def get[A](page: Gettable[A])(implicit rds: Reads[A]): Option[A] =
     Reads.optionNoError(Reads.at(page.path)).reads(data).getOrElse(None)
+
+  def getJourney[A](journey: Journey[A])(implicit rds: Reads[A]): Option[A] =
+    Reads.optionNoError(Reads.at(journey.path)).reads(data).getOrElse(None)
 
   def setOrException[A](page: QuestionPage[A], value: A)(implicit writes: Writes[A]): UserAnswers =
     set(page, value) match {
@@ -53,6 +56,11 @@ final case class UserAnswers(
         page.cleanup(Some(value), updatedAnswers)
       }
     }
+
+  def setJourney[A](journey: Journey[A], value: A)(implicit writes: Writes[A]): Try[UserAnswers] =
+    this.data.setObject(journey.path, Json.toJson(value)) match
+      case JsSuccess(jsValue, _) => Success(copy(data = data))
+      case JsError(errors)       => Failure(JsResultException(errors))
 
   def remove[A](page: Settable[A]): Try[UserAnswers] = {
 

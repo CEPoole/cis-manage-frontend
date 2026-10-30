@@ -80,6 +80,8 @@ GET   /agent/your-clients/start     controllers.agent.ClientListSearchController
 # Contractor Landing
 GET  /org/manage-construction-industry-scheme-account                    controllers.contractor.ContractorLandingController.onPageLoad()
 GET  /org/manage-construction-industry-scheme-account/target/:targetKey  controllers.contractor.ContractorLandingController.onTargetClick(targetKey: String)
+GET  /org/manage-construction-industry-scheme-account/:id                    controllers.contractor.ContractorLandingController.journeyOnPageLoad(id: String)
+GET  /org/manage-construction-industry-scheme-account/:id/target/:targetKey  controllers.contractor.ContractorLandingController.journeyOnTargetClick(id: String, targetKey: String)
 
 # Introduction
 GET  /sign-into-cis          controllers.IntroductionController.onPageLoad()

@@ -52,6 +52,7 @@ class ContractorLandingController @Inject() (
     with I18nSupport
     with Logging {
 
+  @deprecated("[multi-tab-fix] Using resolveCisId and RESTful URLs instead of fake CisIdPage in session")
   def onPageLoad: Action[AnyContent] = (identify andThen getData andThen requireData).async { implicit request =>
     request.employerReference match {
       case None =>
@@ -84,10 +85,29 @@ class ContractorLandingController @Inject() (
     }
   }
 
+  def journeyOnPageLoad(journeyId: String): Action[AnyContent] = (identify andThen getData andThen requireData) {
+    implicit request =>
+      request.employerReference match {
+        case None =>
+          logger.warn("[ContractorLandingController][onPageLoad Missing employerReference on request")
+          Redirect(controllers.routes.SystemErrorController.onPageLoad())
+
+        case Some(employerRef) =>
+          val viewModel = fromUserAnswers(
+            request.userAnswers,
+            appConfig,
+            employerRef.taxOfficeNumber,
+            employerRef.taxOfficeReference
+          )
+          Ok(view(viewModel))
+      }
+  }
+
   def onTargetClick(targetKey: String): Action[AnyContent] =
     (identify andThen getData andThen requireData).async { implicit request =>
-      val systemErrorRedirect     = Redirect(controllers.routes.SystemErrorController.onPageLoad())
-      val unauthorizedOrgRedirect = Redirect(controllers.routes.UnauthorisedOrganisationAffinityController.onPageLoad())
+      lazy val systemErrorRedirect     = Redirect(controllers.routes.SystemErrorController.onPageLoad())
+      lazy val unauthorizedOrgRedirect =
+        Redirect(controllers.routes.UnauthorisedOrganisationAffinityController.onPageLoad())
 
       resolveInputs(targetKey, systemErrorRedirect, unauthorizedOrgRedirect) match {
         case Left(result) =>
@@ -97,6 +117,9 @@ class ContractorLandingController @Inject() (
           handleTargetClick(targetKey, target, instanceId, employerRef, systemErrorRedirect)
       }
     }
+
+  def journeyOnTargetClick(journeyId: String, targetKey: String): Action[AnyContent] =
+    onTargetClick(targetKey)
 
   private def resolveInputs(
     targetKey: String,

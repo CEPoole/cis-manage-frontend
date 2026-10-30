@@ -44,6 +44,24 @@ class ManageService @Inject() (
 )(implicit appConfig: FrontendAppConfig, ec: ExecutionContext)
     extends Logging {
 
+  def resolveCisJourney(ua: UserAnswers)(implicit hc: HeaderCarrier): Future[String] =
+    cisConnector
+      .getCisTaxpayer()
+      .flatMap: taxpayer =>
+        val cisId = taxpayer.uniqueId.trim
+        if cisId.isEmpty
+        then Future.failed(throw new RuntimeException("Empty cisId (uniqueId) returned from /cis/taxpayer"))
+        else
+          val journeyId = ua.id.zip(cisId).foldLeft("") { case (str, (left, right)) => str + (left ^ right) }
+          initialiseSession(ua, taxpayer, journeyId)
+
+  private def initialiseSession(ua: UserAnswers, taxpayer: CisTaxpayer, journeyId: String): Future[String] =
+    Future
+      .fromTry(ua.setJourney(CisTaxpayerJourney(journeyId), taxpayer.toCache))
+      .map: sessionRepository.set
+      .map: _ => journeyId
+
+  @deprecated("[multi-tab-fix] Using resolveCisId and RESTful URLs instead of fake CisIdPage in session")
   def resolveAndStoreCisId(ua: UserAnswers)(implicit hc: HeaderCarrier): Future[(String, UserAnswers)] =
     ua.get(CisIdPage) match {
       case Some(cisId) => Future.successful((cisId, ua))

@@ -24,17 +24,19 @@ import javax.inject.Inject
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc.{Action, AnyContent, MessagesControllerComponents}
 import repositories.SessionRepository
+import services.ManageService
 import uk.gov.hmrc.play.bootstrap.frontend.controller.FrontendBaseController
 import views.html.IntroductionView
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 class IntroductionController @Inject() (
   override val messagesApi: MessagesApi,
   val controllerComponents: MessagesControllerComponents,
   identify: IdentifierAction,
   sessionRepository: SessionRepository,
-  view: IntroductionView
+  view: IntroductionView,
+  manageService: ManageService
 )(implicit ec: ExecutionContext, appConfig: FrontendAppConfig)
     extends FrontendBaseController
     with I18nSupport {
@@ -43,15 +45,18 @@ class IntroductionController @Inject() (
     Ok(view())
   }
 
-  def affinityGroupRouting: Action[AnyContent] = identify.async { implicit request =>
+  def affinityGroupRouting: Action[AnyContent] = identify.async:
+  implicit request =>
     val userAnswers = UserAnswers(request.userId)
-    sessionRepository.set(userAnswers).map { _ =>
-      if (request.isAgent) {
-        Redirect(controllers.agent.routes.RetrievingClientController.onPageLoad())
-      } else {
-        Redirect(controllers.contractor.routes.ContractorLandingController.onPageLoad())
-      }
-    }
-  }
+    sessionRepository
+      .set(userAnswers)
+      .flatMap: _ =>
+        if request.isAgent
+        then Future.successful(Redirect(controllers.agent.routes.RetrievingClientController.onPageLoad()))
+        else
+          manageService
+            .resolveCisJourney(userAnswers)
+            .map: journeyId =>
+              Redirect(controllers.contractor.routes.ContractorLandingController.journeyOnPageLoad(journeyId))
 
 }
